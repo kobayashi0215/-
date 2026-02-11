@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Thread - Online Edition</title>
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; touch-action: none; }
+        canvas { display: block; }
+        #ui {
+            position: fixed; top: 20px; left: 20px;
+            color: #0ff; font-family: 'Courier New', monospace;
+            z-index: 100; pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">SCORE: <span id="score">0</span></div>
+    <canvas id="game"></canvas>
+
+<script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+
+    let w, h, player, walls, score, active, press;
+
+    function init() {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+        player = { x: 80, y: h/2, v: 0, g: 0.25 };
+        walls = [];
+        score = 0;
+        active = true;
+        press = false;
+        scoreEl.innerText = score;
+    }
+
+    // 操作
+    const start = () => { if(!active) init(); press = true; };
+    const end = () => press = false;
+    window.addEventListener('mousedown', start);
+    window.addEventListener('mouseup', end);
+    window.addEventListener('touchstart', (e) => { e.preventDefault(); start(); }, {passive: false});
+    window.addEventListener('touchend', end);
+    window.addEventListener('keydown', (e) => { if(e.code === 'Space') start(); });
+    window.addEventListener('keyup', (e) => { if(e.code === 'Space') end(); });
+
+    function spawn() {
+        const gap = 160;
+        const y = Math.random() * (h - gap - 120) + 60;
+        walls.push({ x: w, y: y, gap: gap, passed: false });
+    }
+
+    function draw() {
+        if(!active) {
+            ctx.fillStyle = 'rgba(0,0,0,0.5)';
+            ctx.fillRect(0,0,w,h);
+            ctx.fillStyle = '#0ff';
+            ctx.textAlign = 'center';
+            ctx.font = '24px monospace';
+            ctx.fillText('CRASH DETECTED. CLICK TO REBOOT.', w/2, h/2);
+            requestAnimationFrame(draw);
+            return;
+        }
+
+        ctx.fillStyle = '#000814';
+        ctx.fillRect(0, 0, w, h);
+
+        if(press) player.v -= 0.6;
+        player.v += player.g;
+        player.y += player.v;
+
+        ctx.fillStyle = '#0ff';
+        ctx.beginPath();
+        ctx.arc(player.x, player.y, 8, 0, Math.PI*2);
+        ctx.fill();
+
+        if(walls.length === 0 || walls[walls.length-1].x < w - 300) spawn();
+
+        for(let i = walls.length - 1; i >= 0; i--) {
+            let o = walls[i];
+            o.x -= 4;
+
+            ctx.fillStyle = '#f0f';
+            ctx.fillRect(o.x, 0, 40, o.y);
+            ctx.fillRect(o.x, o.y + o.gap, 40, h);
+
+            if(o.x < player.x + 8 && o.x + 40 > player.x - 8) {
+                if(player.y - 8 < o.y || player.y + 8 > o.y + o.gap) active = false;
+            }
+
+            if(!o.passed && o.x < player.x) {
+                o.passed = true;
+                score++;
+                scoreEl.innerText = score;
+            }
+            if(o.x < -50) walls.splice(i, 1);
+        }
+
+        if(player.y < 0 || player.y > h) active = false;
+
+        requestAnimationFrame(draw);
+    }
+
+    window.addEventListener('resize', () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; });
+    init();
+    draw();
+</script>
+</body>
+</html>
